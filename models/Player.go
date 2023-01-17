@@ -16,6 +16,6 @@ func (p *Player) Win(amount int, g *Game) {
 	g.Pot -= amount
 }
 
-func (p *Player) Lose(amount int, g *Game) {
-	p.Cash -= amount
+func (p *Player) Fold() {
+	p.Hand = Hand{}
 }
