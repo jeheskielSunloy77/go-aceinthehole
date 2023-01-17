@@ -15,10 +15,10 @@ func (d *Deck) Shuffle() {
 	rand.Shuffle(len(d.Cards), func(i, j int) { d.Cards[i], d.Cards[j] = d.Cards[j], d.Cards[i] })
 }
 
-func (d *Deck) Deal(handSize int) *Hand {
+func (d *Deck) Deal(handSize int) Hand {
 	cards := d.Cards[:handSize]
 	d.Cards = d.Cards[handSize:]
-	return &Hand{Cards: cards}
+	return Hand{Cards: cards}
 }
 
 func (d *Deck) New() {
