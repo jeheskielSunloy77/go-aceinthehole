@@ -1,140 +1,140 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"strconv"
-
-	"github.com/jeheskielSunloy77/go-aceinthehole/models"
+	"math/rand"
+	"sort"
 )
 
-type NewGameResponse struct {
-	Players []models.Player `json:"players"`
-	Blinds  models.Blinds   `json:"blinds"`
+type Suit int
+
+const (
+	Hearts Suit = iota
+	Diamonds
+	Clubs
+	Spades
+)
+
+type Rank int
+
+const (
+	Ace Rank = iota + 1 // Add 1 to start ranks from 1
+	Two
+	Three
+	Four
+	Five
+	Six
+	Seven
+	Eight
+	Nine
+	Ten
+	Jack
+	Queen
+	King
+)
+
+type Card struct {
+	Rank Rank
+	Suit Suit
+}
+
+type Hand struct {
+	Card1 Card
+	Card2 Card
+}
+
+type Player struct {
+	Name string
+	Hand Hand
+	Cash int
+}
+
+type Game struct {
+	Players []Player
+	Pot     int
+	Deck    []Card
+	Board   []Card
+}
+
+func (g *Game) CreateDeck() {
+	for suit := Hearts; suit <= Spades; suit++ {
+		for rank := Ace; rank <= King; rank++ {
+			g.Deck = append(g.Deck, Card{rank, suit})
+		}
+	}
+}
+
+func (g *Game) ShuffleDeck() {
+	for i := range g.Deck {
+		j := i + rand.Intn(len(g.Deck)-i)
+		g.Deck[i], g.Deck[j] = g.Deck[j], g.Deck[i]
+	}
+}
+
+func (g *Game) AddPlayer(player Player) {
+	g.Players = append(g.Players, player)
+}
+
+func (g *Game) Deal() {
+	for i := 0; i < 2; i++ {
+		for j := range g.Players {
+			g.Players[j].Hand = Hand{
+				Card1: g.Deck[0],
+				Card2: g.Deck[1],
+			}
+			g.Deck = g.Deck[2:]
+		}
+	}
+}
+
+func (g *Game) Flop() {
+	for i := 0; i < 3; i++ {
+		g.Board = append(g.Board, g.Deck[0])
+		g.Deck = g.Deck[1:]
+	}
+}
+
+func (g *Game) Turn() {
+	g.Board = append(g.Board, g.Deck[0])
+	g.Deck = g.Deck[1:]
+}
+
+func (g *Game) River() {
+	g.Board = append(g.Board, g.Deck[0])
+	g.Deck = g.Deck[1:]
+}
+
+func (g *Game) Showdown() {
+	sort.Sort(PlayersSortByRank(g.Players))
+
+	for i, player := range g.Players {
+		fmt.Printf("Player %s have a %v %v and %v %v \n Player Ranking is %d\n", player.Name, player.Hand.Card1.Rank, player.Hand.Card1.Suit, player.Hand.Card2.Rank, player.Hand.Card2.Suit, i+1)
+	}
+
+}
+
+type PlayersSortByRank []Player
+
+func (a PlayersSortByRank) Len() int      { return len(a) }
+func (a PlayersSortByRank) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a PlayersSortByRank) Less(i, j int) bool {
+	return a[i].Hand.Card1.Rank < a[j].Hand.Card1.Rank || a[i].Hand.Card1.Rank < a[j].Hand.Card2.Rank || a[i].Hand.Card2.Rank < a[j].Hand.Card2.Rank || a[i].Hand.Card2.Rank < a[j].Hand.Card1.Rank
+
 }
 
 func main() {
-	var game models.Game
+	var game Game
 
-	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		game.New([]models.Player{
-			{Name: "Jeheskiel", Cash: 1000},
-			{Name: "Sunloy", Cash: 1000},
-		}, models.Blinds{
-			Small: models.Blind{Amount: 10, PlayerName: "Jeheskiel"},
-			Big:   models.Blind{Amount: 20, PlayerName: "Sunloy"},
-		})
-		game.Deal(2)
-		json, err := json.Marshal(map[string]interface{}{
-			"message": "New game created",
-			"game":    game,
-		})
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		w.Write(json)
+	game.CreateDeck()
+	game.ShuffleDeck()
+	game.AddPlayer(Player{Name: "John"})
+	game.AddPlayer(Player{Name: "Danny"})
+	game.AddPlayer(Player{Name: "Mike"})
 
-	})
+	game.Deal()
+	game.Flop()
+	game.Turn()
+	game.River()
+	game.Showdown()
 
-	http.HandleFunc("/new-game", func(w http.ResponseWriter, r *http.Request) {
-		decoder := json.NewDecoder(r.Body)
-
-		var response NewGameResponse
-		if err := decoder.Decode(&response); err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		game.New(response.Players, response.Blinds)
-		json, err := json.Marshal(map[string]interface{}{
-			"message": "New game created",
-			"players": game.Players,
-			"pot":     game.Pot,
-		})
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		w.Write(json)
-	})
-	http.HandleFunc("/deal", func(w http.ResponseWriter, r *http.Request) {
-		handSizeQuery := r.URL.Query().Get("hand-size")
-
-		handSize, err := strconv.Atoi(handSizeQuery)
-		if err != nil {
-			handSize = 2
-		}
-		game.Deal(handSize)
-		fmt.Println(game.Players)
-		hands := make([][]models.Card, len(game.Players))
-		for i, player := range game.Players {
-			hands[i] = player.Hand.Cards
-		}
-		json, err := json.Marshal(map[string]interface{}{
-			"message": "Cards dealt",
-			"hands":   hands,
-			"flop":    game.Flop,
-			"pot":     game.Pot,
-		})
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		w.Write(json)
-
-	})
-
-	http.HandleFunc("/turn", func(w http.ResponseWriter, r *http.Request) {
-		game.Flop = append(game.Flop, game.Deck.Deal(1).Cards[0])
-		json, err := json.Marshal(map[string]interface{}{
-			"message": "Turn dealt",
-			"flop":    game.Flop,
-		})
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		w.Write(json)
-	})
-
-	http.HandleFunc("/game-check", func(w http.ResponseWriter, r *http.Request) {
-		playersRanks := game.GameCheck()
-
-		json, err := json.Marshal(map[string]interface{}{
-			"message":       "Game check",
-			"players-ranks": playersRanks,
-		})
-		if err != nil {
-			w.Write([]byte(`{"message":"Error"}`))
-		}
-		w.Write(json)
-	})
-	http.HandleFunc("/bet", func(w http.ResponseWriter, r *http.Request) {
-		playerQuery := r.URL.Query().Get("player")
-		betQuery := r.URL.Query().Get("bet")
-		bet, err := strconv.Atoi(betQuery)
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		if playerQuery == "" && betQuery == "" {
-			w.Write([]byte("player and bet are required"))
-			return
-		}
-		game.Bet(playerQuery, bet)
-		w.Write([]byte(`{"message":"Bet placed", "player":` + playerQuery + `, "bet":` + betQuery + `, "pot":` + strconv.Itoa(game.Pot) + `}`))
-	})
-	http.HandleFunc("/fold", func(w http.ResponseWriter, r *http.Request) {
-		playerQuery := r.URL.Query().Get("player")
-		if playerQuery == "" {
-			w.Write([]byte("player is required"))
-			return
-		}
-		game.Fold(playerQuery)
-		w.Write([]byte(`{"message":"Player folded", "player":` + playerQuery + `}`))
-	})
-
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }
