@@ -389,3 +389,42 @@ func main() {
 	}
 
 }
+
+// func main() {
+// 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+// 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// 		tmpl, err := template.ParseFiles("templates/index.html")
+// 		if err != nil {
+// 			http.Error(w, err.Error(), http.StatusInternalServerError)
+// 			return
+// 		}
+// 		data := map[string][]User{
+// 			"Users": {
+// 				{Username: "John", Email: "johndoe123@gmail.com"},
+// 				{Username: "Jane", Email: "janedoe321@gmail.com"},
+// 			},
+// 		}
+
+// 		err = tmpl.Execute(w, data)
+// 		if err != nil {
+// 			http.Error(w, err.Error(), http.StatusInternalServerError)
+// 			return
+// 		}
+// 	})
+// 	http.HandleFunc("/add-user", func(w http.ResponseWriter, r *http.Request) {
+// 		if r.Method != http.MethodPost {
+// 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// 			return
+// 		}
+
+// 		htmlString := fmt.Sprintf(`<li>Username = %s Email = %s</li>`, r.FormValue("username"), r.FormValue("email"))
+// 		tmpl, err := template.New("users-list-element").Parse(htmlString)
+// 		if err != nil {
+// 			http.Error(w, err.Error(), http.StatusInternalServerError)
+// 			return
+// 		}
+// 		tmpl.Execute(w, nil)
+// 	})
+
+// }
